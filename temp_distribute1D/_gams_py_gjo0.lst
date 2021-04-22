@@ -1,0 +1,289 @@
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/29/21 16:41:57 Page 1
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+      An insulated bar with an initial temperature distribution at t=0, having ends
+      that are subsequently maintain at temperature which may be function of time.
+      PDE:
+      du/dt = d^2u/dx^2, for 0<x<1, 0<t<T
+      I.C.: u(x,0)=f(x), 0<=x<=1
+      B.C.: u(0,t)=g0(t), 0<t<=T
+            u(1,t)=g1(t), 0<t<=T
+  10   
+  11  Set T /t1*t7/ ;
+  12  Set X /x1*x6/ ;
+  13  *Determination of zone for temperature distribute equation
+  14  Set region(X,T) network of grid point;
+  15      region(X,T) = yes;
+  16      region(X,T)$(ord(X)=1) = no;
+  17      region(X,T)$(ord(X)=card(X)) = no;
+  18      region(X,T)$(ord(T)=1) = no;
+  19   
+  20   
+  21  * Parameters
+  22  scalar dt  step space in x direction  ;
+  23  scalar dx  step space in y direction  ;
+  24   
+GDXIN   C:\Users\user\Documents\bjonesmile_project\FId-pde-project\temp_distribute1D\_gams_py_gdb0.gdx
+--- LOAD  dt = 1:dt
+--- LOAD  dx = 2:dx
+  29   
+  30  parameter r kinematic viscosity ;
+  31            r = dt/(dx*dx) ;
+  32   
+  33  variables
+  34            obj        objective variable
+  35            u(X,T)     temperature distribution ;
+  36   
+  37  * Variable bounds and initialization
+  38      u.l(X,T) = 0;
+  39      u.l(X,T)$(region(X,T)) = 0;
+  40   
+  41      u.up(X,T) = 100;
+  42      u.lo(X,T) = 0;
+  43  *Boundary conditions
+  44      u.fx('x1',T) = 100;
+  45      u.fx('x6 ',T) = 100;
+  46      u.fx('x1','t1') = 0;
+  47      u.fx('x6','t1') = 0;
+  48   
+  49  Equations
+  50            eobj       objective function
+  51            For_u(X,T) ;
+  52      For_u(X,T)$(region(X,T)) ..  u(X,T+1) =e= r*u(X-1,T)+(1-2*r)*u(X,T)+r*u(X+1,T) ;
+  53   
+  54      eobj .. obj =e= u('x3','t7')+u('x4','t7');
+  55   
+  56  Model temp_distribtion1D /all/;
+  57   
+  58  *$onecho >bench.opt
+  59  *  solvers conopt knitro minos snopt
+  60  *$offecho
+  61   
+  62  *temp_distribtion1D.optfile=1;
+  63  *option nlp=bench;
+  64   
+  65  Solve temp_distribtion1D using nlp maximizing obj;
+  66  execute_unload "temp_distribtion1D_result.gdx", u, region, T, X, r;
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/29/21 16:41:57 Page 2
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Include File Summary
+
+
+   SEQ   GLOBAL TYPE      PARENT   LOCAL  FILENAME
+
+     1        1 INPUT          0       0  C:\Users\user\Documents\bjonesmile_project\FId-pde-project\temp_distribute1D\TempDist1D_.gms
+     2       26 GDXIN          1      26  C:\Users\user\Documents\bjonesmile_project\FId-pde-project\temp_distribute1D\_gams_py_gdb0.gdx
+
+
+COMPILATION TIME     =        0.000 SECONDS      3 MB  32.2.0 rc62c018 WEX-WEI
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/29/21 16:41:57 Page 3
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Equation Listing    SOLVE temp_distribtion1D Using NLP From line 65
+
+
+---- eobj  =E=  objective function
+
+eobj..  obj - u(x3,t7) - u(x4,t7) =E= 0 ; (LHS = 0)
+     
+
+---- For_u  =E=  
+
+For_u(x2,t2)..  - 0.25*u(x1,t2) - 0.5*u(x2,t2) + u(x2,t3) - 0.25*u(x3,t2) =E= 0 ; (LHS = -25, INFES = 25 ****)
+     
+For_u(x2,t3)..  - 0.25*u(x1,t3) - 0.5*u(x2,t3) + u(x2,t4) - 0.25*u(x3,t3) =E= 0 ; (LHS = -25, INFES = 25 ****)
+     
+For_u(x2,t4)..  - 0.25*u(x1,t4) - 0.5*u(x2,t4) + u(x2,t5) - 0.25*u(x3,t4) =E= 0 ; (LHS = -25, INFES = 25 ****)
+     
+REMAINING 21 ENTRIES SKIPPED
+
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/29/21 16:41:57 Page 4
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Column Listing      SOLVE temp_distribtion1D Using NLP From line 65
+
+
+---- obj  objective variable
+
+obj
+                (.LO, .L, .UP, .M = -INF, 0, +INF, 0)
+        1       eobj
+
+
+---- u  temperature distribution
+
+u(x1,t2)
+                (.LO, .L, .UP, .M = 100, 100, 100, 0)
+       -0.25    For_u(x2,t2)
+
+u(x1,t3)
+                (.LO, .L, .UP, .M = 100, 100, 100, 0)
+       -0.25    For_u(x2,t3)
+
+u(x1,t4)
+                (.LO, .L, .UP, .M = 100, 100, 100, 0)
+       -0.25    For_u(x2,t4)
+
+REMAINING 33 ENTRIES SKIPPED
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/29/21 16:41:57 Page 5
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Model Statistics    SOLVE temp_distribtion1D Using NLP From line 65
+
+
+MODEL STATISTICS
+
+BLOCKS OF EQUATIONS           2     SINGLE EQUATIONS           25
+BLOCKS OF VARIABLES           2     SINGLE VARIABLES           37
+NON ZERO ELEMENTS            95     NON LINEAR N-Z              0
+DERIVATIVE POOL              20     CONSTANT POOL              16
+CODE LENGTH                   0
+
+
+GENERATION TIME      =        0.016 SECONDS      4 MB  32.2.0 rc62c018 WEX-WEI
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/29/21 16:41:57 Page 6
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Solution Report     SOLVE temp_distribtion1D Using NLP From line 65
+
+
+               S O L V E      S U M M A R Y
+
+     MODEL   temp_distribtion1D   OBJECTIVE  obj
+     TYPE    NLP                  DIRECTION  MAXIMIZE
+     SOLVER  CONOPT               FROM LINE  65
+
+**** SOLVER STATUS     1 Normal Completion         
+**** MODEL STATUS      4 Infeasible                
+**** OBJECTIVE VALUE               58.3984
+
+ RESOURCE USAGE, LIMIT          0.000 10000000000.000
+ ITERATION COUNT, LIMIT         3    2147483647
+ EVALUATION ERRORS              0             0
+CONOPT 3         32.2.0 rc62c018 Released Aug 26, 2020 WEI x86 64bit/MS Window
+ 
+ 
+    C O N O P T 3   version 3.17L
+    Copyright (C)   ARKI Consulting and Development A/S
+                    Bagsvaerdvej 246 A
+                    DK-2880 Bagsvaerd, Denmark
+ 
+ 
+                   Pre-triangular equations:   0
+                   Post-triangular equations:  1
+                   Definitional equations:     20
+ 
+ 
+ ** Infeasible solution. There are no superbasic variables.
+ 
+ 
+ CONOPT time Total                            0.000 seconds
+   of which: Function evaluations             0.000 =  0.0%
+             1st Derivative evaluations       0.000 =  0.0%
+ 
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- EQU eobj                .              .              .             EPS         
+
+  eobj  objective function
+
+---- EQU For_u  
+
+             LOWER          LEVEL          UPPER         MARGINAL
+
+x2.t2          .              .              .             0.0443      
+x2.t3          .              .              .             0.0488      
+x2.t4          .              .              .             0.0537      
+x2.t5          .              .              .             0.0586      
+x2.t6          .              .              .             0.0625      
+x2.t7          .           -60.3271          .             0.0625 INFES
+x3.t2          .              .              .             0.0717      
+x3.t3          .              .              .             0.0793      
+x3.t4          .              .              .             0.0879      
+x3.t5          .              .              .             0.0977      
+x3.t6          .              .              .             0.1094      
+x3.t7          .           -35.9131          .             0.1250 INFES
+x4.t2          .              .              .             0.0717      
+x4.t3          .              .              .             0.0793      
+x4.t4          .              .              .             0.0879      
+x4.t5          .              .              .             0.0977      
+x4.t6          .              .              .             0.1094      
+x4.t7          .           -35.9131          .             0.1250 INFES
+x5.t2          .              .              .             0.0443      
+x5.t3          .              .              .             0.0488      
+x5.t4          .              .              .             0.0537      
+x5.t5          .              .              .             0.0586      
+x5.t6          .              .              .             0.0625      
+x5.t7          .           -60.3271          .             0.0625 INFES
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- VAR obj               -INF           58.3984        +INF             .          
+
+  obj  objective variable
+
+---- VAR u  temperature distribution
+
+             LOWER          LEVEL          UPPER         MARGINAL
+
+x1.t2       100.0000       100.0000       100.0000         EPS         
+x1.t3       100.0000       100.0000       100.0000         EPS         
+x1.t4       100.0000       100.0000       100.0000         EPS         
+x1.t5       100.0000       100.0000       100.0000         EPS         
+x1.t6       100.0000       100.0000       100.0000         EPS         
+x1.t7       100.0000       100.0000       100.0000         EPS         
+x2.t2          .              .           100.0000         0.0401      
+x2.t3          .            25.0000       100.0000          .          
+x2.t4          .            37.5000       100.0000          .          
+x2.t5          .            45.3125       100.0000          .          
+x2.t6          .            51.1719       100.0000          .          
+x2.t7          .            56.0547       100.0000          .          
+x3.t2          .              .           100.0000         0.0648      
+x3.t3          .              .           100.0000          .          
+x3.t4          .             6.2500       100.0000          .          
+x3.t5          .            14.0625       100.0000          .          
+x3.t6          .            21.8750       100.0000          .          
+x3.t7          .            29.1992       100.0000          .          
+x4.t2          .              .           100.0000         0.0648      
+x4.t3          .              .           100.0000          .          
+x4.t4          .             6.2500       100.0000          .          
+x4.t5          .            14.0625       100.0000          .          
+x4.t6          .            21.8750       100.0000          .          
+x4.t7          .            29.1992       100.0000          .          
+x5.t2          .              .           100.0000         0.0401      
+x5.t3          .            25.0000       100.0000          .          
+x5.t4          .            37.5000       100.0000          .          
+x5.t5          .            45.3125       100.0000          .          
+x5.t6          .            51.1719       100.0000          .          
+x5.t7          .            56.0547       100.0000          .          
+x6.t2       100.0000       100.0000       100.0000         EPS         
+x6.t3       100.0000       100.0000       100.0000         EPS         
+x6.t4       100.0000       100.0000       100.0000         EPS         
+x6.t5       100.0000       100.0000       100.0000         EPS         
+x6.t6       100.0000       100.0000       100.0000         EPS         
+x6.t7       100.0000       100.0000       100.0000         EPS         
+
+
+**** REPORT SUMMARY :        0     NONOPT
+                             4 INFEASIBLE (INFES)
+                    SUM        192.4805
+                    MAX         60.3271
+                    MEAN        48.1201
+                             0  UNBOUNDED
+                             0     ERRORS
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/29/21 16:41:57 Page 7
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+E x e c u t i o n
+
+
+EXECUTION TIME       =        0.047 SECONDS      4 MB  32.2.0 rc62c018 WEX-WEI
+
+
+USER: Chuei-Tin Chang, Single User License           S200526/0001AP-WIN
+      National Cheng Kung University, Department of Chemical EngiDC3482
+      License for teaching and research at degree granting institutions
+
+
+**** FILE SUMMARY
+
+Input      C:\Users\user\Documents\bjonesmile_project\FId-pde-project\temp_distribute1D\TempDist1D_.gms
+Output     C:\Users\user\Documents\bjonesmile_project\FId-pde-project\temp_distribute1D\_gams_py_gjo0.lst

@@ -1,0 +1,350 @@
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/24/21 21:45:52 Page 1
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+      Stationary flow of an incompressible fluid in a rectangular area in the
+      presence of an obstacle.
+   5   
+   6  set X /u1*u20/;
+   7  set Y /u1*u20/;
+   8   
+   9  * Determination of zone for water movement equation
+  10  Set vyside(X,Y);
+  11  Set vxside(X,Y);
+  12      vxside(X,Y)                  = yes;
+  13      vxside(X,Y)$(ord(X)=1)       = no;
+  14      vxside(X,Y)$(ord(X)=card(X)) = no;
+  15      vxside(X,Y)$(ord(Y)=1)       = no;
+  16      vxside(X,Y)$(ord(Y)=card(Y)) = no;
+  17      vxside('u10','u10')            = no;
+  18      vxside('u10','u11')            = no;
+  19      vyside(X,Y) = vxside(X,Y);
+  20   
+  21  * Parameters
+  22  scalar dx  step space in x direction  ;
+  23  scalar dy  step space in y direction  ;
+  24  scalar r   density of the fluid        /1000/;
+  25   
+GDXIN   C:\Users\user\Documents\bjonesmile_project\FId-pde-project\flow-obs\_gams_py_gdb0.gdx
+--- LOAD  dx = 1:dx
+--- LOAD  dy = 2:dy
+  30   
+  31  parameter m(X,Y) kinematic viscosity ;
+  32            m(X,Y) := 0.5;
+  33   
+  34  variables
+  35    obj        objective variable
+  36    D(X,Y)     error
+  37    P(X,Y)     pressure
+  38    Vx(X,Y)    x-direction velocity
+  39    Vy(X,Y)    y-direction velocity  ;
+  40   
+  41  * Variable bounds and initialization
+  42    Vx.l(X,Y)     =  0.0;
+  43    Vy.l(X,Y)     =  0.0;
+  44    Vy.l(x,y)$(vxside(x,y)) = 0.0;
+  45   
+  46    D.lo(X,Y)     = 0.0;
+  47    D.up(X,Y)     = 10.0;
+  48   
+  49    P.up(X,Y)     =  20000;
+  50    P.lo(X,Y)     = -20000;
+  51    P.l(X,Y)      =  0.0;
+  52   
+  53  *Boundary conditions
+  54    Vx.fx('u1',Y)   = 0.5;
+  55    Vx.fx('u20',Y)  = 0.5;
+  56    Vx.fx(X,'u1')   = 0;
+  57    Vx.fx(X,'u20')  = 0;
+  58    Vy.fx('u1',Y)   = 0;
+  59    Vy.fx('u20',Y)  = 0;
+  60    Vy.fx(X,'u1')   = 0;
+  61    Vy.fx(X,'u20')  = 0;
+  62   
+  63  * Obstacle description
+  64    vx.fx('u10','u10') = 0;
+  65    vx.fx('u10','u11') = 0;
+  66   
+  67  Equations
+  68       For_Vx(X,Y)
+  69       For_Vy(X,Y)
+  70       Div_Vxy(X,Y)
+  71       eobj  objective function ;
+  72   
+  73  For_Vx(X,Y)$(vxside(X,Y))..
+  74     (P(X+1,Y)-P(X,Y))/(r*dx) =e=
+  75       m(X,Y)*((Vx(X+1,Y)-2*Vx(X,Y)+Vx(x-1,Y))/(dx*dy)
+  76      +        (Vx(X,Y+1)-2*Vx(X,Y)+Vx(X,Y-1))/(dx*dy));
+  77   
+  78  For_Vy(X,Y)$(vxside(X,Y))..
+  79     (P(X,Y+1)-P(X,Y))/(r*dy) =e=
+  80       m(X,Y)*((Vy(X+1,Y)-2*Vy(X,Y)+Vy(X-1,Y))/(dx*dy)
+  81      +        (Vy(X,Y+1)-2*Vy(X,Y)+Vy(X,Y-1))/(dy*dx));
+  82  *--
+  83  *For_Vx(X,Y)$(Vxside(X,Y))..
+  84  *    Vx(X,Y)*(Vx(X+1,Y)-Vx(X-1,Y))/(2*dx) +
+  85  *    0.25*(Vy(X+1,Y-1)+Vy(X+1,Y)+Vy(X,Y-1)+Vy(X,Y)) *
+  86  *         (Vx(X,Y+1)-Vx(X,Y-1))/(2*dy) +
+  87  *         (P(X+1,Y)-P(X,Y))/(r*dx)
+  88  *    =e=
+  89  *    m(X,Y)*((Vx(X+1,Y)-2*Vx(X,Y)+Vx(X-1,Y))/(dx*dx) +
+  90  *            (Vx(X,Y+1)-2*Vx(X,Y)+Vx(X,Y-1))/(dy*dy));
+  91  *
+  92  *For_Vy(X,Y)$(Vyside(X,Y))..
+  93  *    0.25*(Vx(X-1,Y+1)+Vx(X-1,Y)+Vx(X,Y+1)+Vx(X,Y)) *
+  94  *         (Vy(X+1,Y)-Vy(X-1,Y))/(2*dy) +
+  95  *         Vy(X,Y)*(Vy(X,Y+1)-Vy(X,Y-1))/(2*dy) +
+  96  *         (P(X,Y+1)-P(X,Y))/(r*dy)
+  97  *    =e=
+  98  *    m(X,Y)*((Vy(X+1,Y)-2*Vy(X,Y)+Vy(X-1,Y))/(dx*dx) +
+  99  *            (Vy(X,Y+1)-2*Vy(X,Y)+Vy(X,Y-1))/(dy*dy));
+ 100  *--
+ 101  Div_Vxy(X,Y)$((ord(X) > 1) $ (ord(Y) > 1))..
+ 102      (Vx(X,Y)-Vx(X-1,Y))/dx + (Vy(X,Y)-Vy(X,Y-1))/dy =e=
+ 103           D(X,Y);
+ 104   
+ 105  eobj.. obj =e= SUM((X,Y),(D(X,Y)*D(X,Y)));
+ 106   
+ 107  Model flowobs /all/;
+ 108   
+ 112   
+ 113  flowobs.optfile=1;
+ 114  option nlp=bench;
+ 115   
+ 119   
+ 120  Solve flowobs using nlp minimizing obj;
+ 121  execute_unload "flowobs_result.gdx", X, Y, Vx, Vy, vxside, vyside, P, D, m;
+ 122  * end flowobs
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/24/21 21:45:52 Page 2
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Include File Summary
+
+
+   SEQ   GLOBAL TYPE      PARENT   LOCAL  FILENAME
+
+     1        1 INPUT          0       0  C:\Users\user\Documents\bjonesmile_project\FId-pde-project\flow-obs\flowobs.gms
+     2       27 GDXIN          1      27  C:\Users\user\Documents\bjonesmile_project\FId-pde-project\flow-obs\_gams_py_gdb0.gdx
+     3      116 GDXOUT         1     116  C:\Users\user\Documents\bjonesmile_project\FId-pde-project\flow-obs\tran.gdx
+
+
+COMPILATION TIME     =        0.000 SECONDS      3 MB  32.2.0 rc62c018 WEX-WEI
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/24/21 21:45:52 Page 3
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Equation Listing    SOLVE flowobs Using NLP From line 120
+
+
+---- For_Vx  =E=  
+
+For_Vx(u2,u2)..  - 0.001*P(u2,u2) + 0.001*P(u3,u2) - 0.5*Vx(u1,u2) - 0.5*Vx(u2,u1) + 2*Vx(u2,u2) - 0.5*Vx(u2,u3) - 0.5*Vx(u3,u2) =E= 0 ; (LHS = -0.25, INFES = 0.25 ****)
+     
+For_Vx(u2,u3)..  - 0.001*P(u2,u3) + 0.001*P(u3,u3) - 0.5*Vx(u1,u3) - 0.5*Vx(u2,u2) + 2*Vx(u2,u3) - 0.5*Vx(u2,u4) - 0.5*Vx(u3,u3) =E= 0 ; (LHS = -0.25, INFES = 0.25 ****)
+     
+For_Vx(u2,u4)..  - 0.001*P(u2,u4) + 0.001*P(u3,u4) - 0.5*Vx(u1,u4) - 0.5*Vx(u2,u3) + 2*Vx(u2,u4) - 0.5*Vx(u2,u5) - 0.5*Vx(u3,u4) =E= 0 ; (LHS = -0.25, INFES = 0.25 ****)
+     
+REMAINING 319 ENTRIES SKIPPED
+
+
+---- For_Vy  =E=  
+
+For_Vy(u2,u2)..  - 0.001*P(u2,u2) + 0.001*P(u2,u3) - 0.5*Vy(u1,u2) - 0.5*Vy(u2,u1) + 2*Vy(u2,u2) - 0.5*Vy(u2,u3) - 0.5*Vy(u3,u2) =E= 0 ; (LHS = 0)
+     
+For_Vy(u2,u3)..  - 0.001*P(u2,u3) + 0.001*P(u2,u4) - 0.5*Vy(u1,u3) - 0.5*Vy(u2,u2) + 2*Vy(u2,u3) - 0.5*Vy(u2,u4) - 0.5*Vy(u3,u3) =E= 0 ; (LHS = 0)
+     
+For_Vy(u2,u4)..  - 0.001*P(u2,u4) + 0.001*P(u2,u5) - 0.5*Vy(u1,u4) - 0.5*Vy(u2,u3) + 2*Vy(u2,u4) - 0.5*Vy(u2,u5) - 0.5*Vy(u3,u4) =E= 0 ; (LHS = 0)
+     
+REMAINING 319 ENTRIES SKIPPED
+
+
+---- Div_Vxy  =E=  
+
+Div_Vxy(u2,u2)..  - D(u2,u2) - Vx(u1,u2) + Vx(u2,u2) - Vy(u2,u1) + Vy(u2,u2) =E= 0 ; (LHS = -0.5, INFES = 0.5 ****)
+     
+Div_Vxy(u2,u3)..  - D(u2,u3) - Vx(u1,u3) + Vx(u2,u3) - Vy(u2,u2) + Vy(u2,u3) =E= 0 ; (LHS = -0.5, INFES = 0.5 ****)
+     
+Div_Vxy(u2,u4)..  - D(u2,u4) - Vx(u1,u4) + Vx(u2,u4) - Vy(u2,u3) + Vy(u2,u4) =E= 0 ; (LHS = -0.5, INFES = 0.5 ****)
+     
+REMAINING 358 ENTRIES SKIPPED
+
+
+---- eobj  =E=  objective function
+
+eobj..  obj + (0)*D(u1,u1) + (0)*D(u1,u2) + (0)*D(u1,u3) + (0)*D(u1,u4) + (0)*D(u1,u5) + (0)*D(u1,u6) + (0)*D(u1,u7) + (0)*D(u1,u8) + (0)*D(u1,u9) + (0)*D(u1,u10) + (0)*D(u1,u11) + (0)*D(u1,u12) + (0)*D(u1,u13) + (0)*D(u1,u14) + (0)*D(u1,u15) + (0)*D(u1,u16) + (0)*D(u1,u17) + (0)*D(u1,u18) + (0)*D(u1,u19) + (0)*D(u1,u20) + (0)*D(u2,u1) + (0)*D(u2,u2) + (0)*D(u2,u3) + (0)*D(u2,u4) + (0)*D(u2,u5) + (0)*D(u2,u6) + (0)*D(u2,u7) + (0)*D(u2,u8) + (0)*D(u2,u9) + (0)*D(u2,u10) + (0)*D(u2,u11) + (0)*D(u2,u12) + (0)*D(u2,u13) + (0)*D(u2,u14) + (0)*D(u2,u15) + (0)*D(u2,u16) + (0)*D(u2,u17) + (0)*D(u2,u18) + (0)*D(u2,u19) + (0)*D(u2,u20) + (0)*D(u3,u1) + (0)*D(u3,u2) + (0)*D(u3,u3) + (0)*D(u3,u4) + (0)*D(u3,u5) + (0)*D(u3,u6) + (0)*D(u3,u7) + (0)*D(u3,u8) + (0)*D(u3,u9) + (0)*D(u3,u10) + (0)*D(u3,u11) + (0)*D(u3,u12) + (0)*D(u3,u13) + (0)*D(u3,u14) + (0)*D(u3,u15) + (0)*D(u3,u16) + (0)*D(u3,u17) + (0)*D(u3,u18) + (0)*D(u3,u19) + (0)*D(u3,u20) + (0)*D(u4,u1) + (0)*D(u4,u2) + (0)*D(u4,u3) + (0)*D(u4,u4) + (0)*D(u4,u5) + (0)*D(u4,u6) + (0)*D(u4,u7) + (0)*D(u4,u8) + (0)*D(u4,u9) + (0)*D(u4,u10) + (0)*D(u4,u11) + (0)*D(u4,u12) + (0)*D(u4,u13) + (0)*D(u4,u14) + (0)*D(u4,u15) + (0)*D(u4,u16) + (0)*D(u4,u17) + (0)*D(u4,u18) + (0)*D(u4,u19) + (0)*D(u4,u20) + (0)*D(u5,u1) + (0)*D(u5,u2) + (0)*D(u5,u3) + (0)*D(u5,u4) + (0)*D(u5,u5) + (0)*D(u5,u6) + (0)*D(u5,u7) + (0)*D(u5,u8) + (0)*D(u5,u9) + (0)*D(u5,u10) + (0)*D(u5,u11) + (0)*D(u5,u12) + (0)*D(u5,u13) + (0)*D(u5,u14) + (0)*D(u5,u15) + (0)*D(u5,u16) + (0)*D(u5,u17) + (0)*D(u5,u18) + (0)*D(u5,u19) + (0)*D(u5,u20) + (0)*D(u6,u1) + (0)*D(u6,u2) + (0)*D(u6,u3) + (0)*D(u6,u4) + (0)*D(u6,u5) + (0)*D(u6,u6) + (0)*D(u6,u7) + (0)*D(u6,u8) + (0)*D(u6,u9) + (0)*D(u6,u10) + (0)*D(u6,u11) + (0)*D(u6,u12) + (0)*D(u6,u13) + (0)*D(u6,u14) + (0)*D(u6,u15) + (0)*D(u6,u16) + (0)*D(u6,u17) + (0)*D(u6,u18) + (0)*D(u6,u19) + (0)*D(u6,u20) + (0)*D(u7,u1) + (0)*D(u7,u2) + (0)*D(u7,u3) + (0)*D(u7,u4) + (0)*D(u7,u5) + (0)*D(u7,u6) + (0)*D(u7,u7) + (0)*D(u7,u8) + (0)*D(u7,u9) + (0)*D(u7,u10) + (0)*D(u7,u11) + (0)*D(u7,u12) + (0)*D(u7,u13) + (0)*D(u7,u14) + (0)*D(u7,u15) + (0)*D(u7,u16) + (0)*D(u7,u17) + (0)*D(u7,u18) + (0)*D(u7,u19) + (0)*D(u7,u20) + (0)*D(u8,u1) + (0)*D(u8,u2) + (0)*D(u8,u3) + (0)*D(u8,u4) + (0)*D(u8,u5) + (0)*D(u8,u6) + (0)*D(u8,u7) + (0)*D(u8,u8) + (0)*D(u8,u9) + (0)*D(u8,u10) + (0)*D(u8,u11) + (0)*D(u8,u12) + (0)*D(u8,u13) + (0)*D(u8,u14) + (0)*D(u8,u15) + (0)*D(u8,u16) + (0)*D(u8,u17) + (0)*D(u8,u18) + (0)*D(u8,u19) + (0)*D(u8,u20) + (0)*D(u9,u1) + (0)*D(u9,u2) + (0)*D(u9,u3) + (0)*D(u9,u4) + (0)*D(u9,u5) + (0)*D(u9,u6) + (0)*D(u9,u7) + (0)*D(u9,u8) + (0)*D(u9,u9) + (0)*D(u9,u10) + (0)*D(u9,u11) + (0)*D(u9,u12) + (0)*D(u9,u13) + (0)*D(u9,u14) + (0)*D(u9,u15) + (0)*D(u9,u16) + (0)*D(u9,u17) + (0)*D(u9,u18) + (0)*D(u9,u19) + (0)*D(u9,u20) + (0)*D(u10,u1) + (0)*D(u10,u2) + (0)*D(u10,u3) + (0)*D(u10,u4) + (0)*D(u10,u5) + (0)*D(u10,u6) + (0)*D(u10,u7) + (0)*D(u10,u8) + (0)*D(u10,u9) + (0)*D(u10,u10) + (0)*D(u10,u11) + (0)*D(u10,u12) + (0)*D(u10,u13) + (0)*D(u10,u14) + (0)*D(u10,u15) + (0)*D(u10,u16) + (0)*D(u10,u17) + (0)*D(u10,u18) + (0)*D(u10,u19) + (0)*D(u10,u20) + (0)*D(u11,u1) + (0)*D(u11,u2) + (0)*D(u11,u3) + (0)*D(u11,u4) + (0)*D(u11,u5) + (0)*D(u11,u6) + (0)*D(u11,u7) + (0)*D(u11,u8) + (0)*D(u11,u9) + (0)*D(u11,u10) + (0)*D(u11,u11) + (0)*D(u11,u12) + (0)*D(u11,u13) + (0)*D(u11,u14) + (0)*D(u11,u15) + (0)*D(u11,u16) + (0)*D(u11,u17) + (0)*D(u11,u18) + (0)*D(u11,u19) + (0)*D(u11,u20) + (0)*D(u12,u1) + (0)*D(u12,u2) + (0)*D(u12,u3) + (0)*D(u12,u4) + (0)*D(u12,u5) + (0)*D(u12,u6) + (0)*D(u12,u7) + (0)*D(u12,u8) + (0)*D(u12,u9) + (0)*D(u12,u10) + (0)*D(u12,u11) + (0)*D(u12,u12) + (0)*D(u12,u13) + (0)*D(u12,u14) + (0)*D(u12,u15) + (0)*D(u12,u16) + (0)*D(u12,u17) + (0)*D(u12,u18) + (0)*D(u12,u19) + (0)*D(u12,u20) + (0)*D(u13,u1) + (0)*D(u13,u2) + (0)*D(u13,u3) + (0)*D(u13,u4) + (0)*D(u13,u5) + (0)*D(u13,u6) + (0)*D(u13,u7) + (0)*D(u13,u8) + (0)*D(u13,u9) + (0)*D(u13,u10) + (0)*D(u13,u11) + (0)*D(u13,u12) + (0)*D(u13,u13) + (0)*D(u13,u14) + (0)*D(u13,u15) + (0)*D(u13,u16) + (0)*D(u13,u17) + (0)*D(u13,u18) + (0)*D(u13,u19) + (0)*D(u13,u20) + (0)*D(u14,u1) + (0)*D(u14,u2) + (0)*D(u14,u3) + (0)*D(u14,u4) + (0)*D(u14,u5) + (0)*D(u14,u6) + (0)*D(u14,u7) + (0)*D(u14,u8) + (0)*D(u14,u9) + (0)*D(u14,u10) + (0)*D(u14,u11) + (0)*D(u14,u12) + (0)*D(u14,u13) + (0)*D(u14,u14) + (0)*D(u14,u15) + (0)*D(u14,u16) + (0)*D(u14,u17) + (0)*D(u14,u18) + (0)*D(u14,u19) + (0)*D(u14,u20) + (0)*D(u15,u1) + (0)*D(u15,u2) + (0)*D(u15,u3) + (0)*D(u15,u4) + (0)*D(u15,u5) + (0)*D(u15,u6) + (0)*D(u15,u7) + (0)*D(u15,u8) + (0)*D(u15,u9) + (0)*D(u15,u10) + (0)*D(u15,u11) + (0)*D(u15,u12) + (0)*D(u15,u13) + (0)*D(u15,u14) + (0)*D(u15,u15) + (0)*D(u15,u16) + (0)*D(u15,u17) + (0)*D(u15,u18) + (0)*D(u15,u19) + (0)*D(u15,u20) + (0)*D(u16,u1) + (0)*D(u16,u2) + (0)*D(u16,u3) + (0)*D(u16,u4) + (0)*D(u16,u5) + (0)*D(u16,u6) + (0)*D(u16,u7) + (0)*D(u16,u8) + (0)*D(u16,u9) + (0)*D(u16,u10) + (0)*D(u16,u11) + (0)*D(u16,u12) + (0)*D(u16,u13) + (0)*D(u16,u14) + (0)*D(u16,u15) + (0)*D(u16,u16) + (0)*D(u16,u17) + (0)*D(u16,u18) + (0)*D(u16,u19) + (0)*D(u16,u20) + (0)*D(u17,u1) + (0)*D(u17,u2) + (0)*D(u17,u3) + (0)*D(u17,u4) + (0)*D(u17,u5) + (0)*D(u17,u6) + (0)*D(u17,u7) + (0)*D(u17,u8) + (0)*D(u17,u9) + (0)*D(u17,u10) + (0)*D(u17,u11) + (0)*D(u17,u12) + (0)*D(u17,u13) + (0)*D(u17,u14) + (0)*D(u17,u15) + (0)*D(u17,u16) + (0)*D(u17,u17) + (0)*D(u17,u18) + (0)*D(u17,u19) + (0)*D(u17,u20) + (0)*D(u18,u1) + (0)*D(u18,u2) + (0)*D(u18,u3) + (0)*D(u18,u4) + (0)*D(u18,u5) + (0)*D(u18,u6) + (0)*D(u18,u7) + (0)*D(u18,u8) + (0)*D(u18,u9) + (0)*D(u18,u10) + (0)*D(u18,u11) + (0)*D(u18,u12) + (0)*D(u18,u13) + (0)*D(u18,u14) + (0)*D(u18,u15) + (0)*D(u18,u16) + (0)*D(u18,u17) + (0)*D(u18,u18) + (0)*D(u18,u19) + (0)*D(u18,u20) + (0)*D(u19,u1) + (0)*D(u19,u2) + (0)*D(u19,u3) + (0)*D(u19,u4) + (0)*D(u19,u5) + (0)*D(u19,u6) + (0)*D(u19,u7) + (0)*D(u19,u8) + (0)*D(u19,u9) + (0)*D(u19,u10) + (0)*D(u19,u11) + (0)*D(u19,u12) + (0)*D(u19,u13) + (0)*D(u19,u14) + (0)*D(u19,u15) + (0)*D(u19,u16) + (0)*D(u19,u17) + (0)*D(u19,u18) + (0)*D(u19,u19) + (0)*D(u19,u20) + (0)*D(u20,u1) + (0)*D(u20,u2) + (0)*D(u20,u3) + (0)*D(u20,u4) + (0)*D(u20,u5) + (0)*D(u20,u6) + (0)*D(u20,u7) + (0)*D(u20,u8) + (0)*D(u20,u9) + (0)*D(u20,u10) + (0)*D(u20,u11) + (0)*D(u20,u12) + (0)*D(u20,u13) + (0)*D(u20,u14) + (0)*D(u20,u15) + (0)*D(u20,u16) + (0)*D(u20,u17) + (0)*D(u20,u18) + (0)*D(u20,u19) + (0)*D(u20,u20) =E= 0 ; (LHS = 0)
+     
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/24/21 21:45:52 Page 4
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Column Listing      SOLVE flowobs Using NLP From line 120
+
+
+---- obj  objective variable
+
+obj
+                (.LO, .L, .UP, .M = -INF, 0, +INF, 0)
+        1       eobj
+
+
+---- D  error
+
+D(u1,u1)
+                (.LO, .L, .UP, .M = 0, 0, 10, 0)
+       (0)      eobj
+
+D(u1,u2)
+                (.LO, .L, .UP, .M = 0, 0, 10, 0)
+       (0)      eobj
+
+D(u1,u3)
+                (.LO, .L, .UP, .M = 0, 0, 10, 0)
+       (0)      eobj
+
+REMAINING 397 ENTRIES SKIPPED
+
+---- P  pressure
+
+P(u2,u2)
+                (.LO, .L, .UP, .M = -20000, 0, 20000, 0)
+       -0.001   For_Vx(u2,u2)
+       -0.001   For_Vy(u2,u2)
+
+P(u2,u3)
+                (.LO, .L, .UP, .M = -20000, 0, 20000, 0)
+       -0.001   For_Vx(u2,u3)
+        0.001   For_Vy(u2,u2)
+       -0.001   For_Vy(u2,u3)
+
+P(u2,u4)
+                (.LO, .L, .UP, .M = -20000, 0, 20000, 0)
+       -0.001   For_Vx(u2,u4)
+        0.001   For_Vy(u2,u3)
+       -0.001   For_Vy(u2,u4)
+
+REMAINING 357 ENTRIES SKIPPED
+
+---- Vx  x-direction velocity
+
+Vx(u1,u2)
+                (.LO, .L, .UP, .M = 0.5, 0.5, 0.5, 0)
+       -0.5     For_Vx(u2,u2)
+       -1       Div_Vxy(u2,u2)
+
+Vx(u1,u3)
+                (.LO, .L, .UP, .M = 0.5, 0.5, 0.5, 0)
+       -0.5     For_Vx(u2,u3)
+       -1       Div_Vxy(u2,u3)
+
+Vx(u1,u4)
+                (.LO, .L, .UP, .M = 0.5, 0.5, 0.5, 0)
+       -0.5     For_Vx(u2,u4)
+       -1       Div_Vxy(u2,u4)
+
+REMAINING 395 ENTRIES SKIPPED
+
+---- Vy  y-direction velocity
+
+Vy(u1,u2)
+                (.LO, .L, .UP, .M = 0, 0, 0, 0)
+       -0.5     For_Vy(u2,u2)
+
+Vy(u1,u3)
+                (.LO, .L, .UP, .M = 0, 0, 0, 0)
+       -0.5     For_Vy(u2,u3)
+
+Vy(u1,u4)
+                (.LO, .L, .UP, .M = 0, 0, 0, 0)
+       -0.5     For_Vy(u2,u4)
+
+REMAINING 395 ENTRIES SKIPPED
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/24/21 21:45:52 Page 5
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Model Statistics    SOLVE flowobs Using NLP From line 120
+
+
+MODEL STATISTICS
+
+BLOCKS OF EQUATIONS           4     SINGLE EQUATIONS        1,006
+BLOCKS OF VARIABLES           5     SINGLE VARIABLES        1,557
+NON ZERO ELEMENTS         6,714     NON LINEAR N-Z            400
+DERIVATIVE POOL              20     CONSTANT POOL              16
+CODE LENGTH               1,203
+
+
+GENERATION TIME      =        0.031 SECONDS      5 MB  32.2.0 rc62c018 WEX-WEI
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/24/21 21:45:52 Page 6
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Solution Report     SOLVE flowobs Using NLP From line 120
+
+
+               S O L V E      S U M M A R Y
+
+     MODEL   flowobs             OBJECTIVE  obj
+     TYPE    NLP                 DIRECTION  MINIMIZE
+     SOLVER  BENCH               FROM LINE  120
+
+**** SOLVER STATUS     1 Normal Completion         
+**** MODEL STATUS      14 No Solution Returned     
+**** OBJECTIVE VALUE                0.0000
+
+ RESOURCE USAGE, LIMIT          0.422 10000000000.000
+ ITERATION COUNT, LIMIT         0    2147483647
+ EVALUATION ERRORS              0             0
+Reading parameter(s) from "C:\Users\user\Documents\bjonesmile_project\FId-pde-project\flow-obs\bench.opt"
+>>    solvers conopt knitro minos snopt
+Finished reading from "C:\Users\user\Documents\bjonesmile_project\FId-pde-project\flow-obs\bench.opt"
+
+
+               B E N C H M A R K      S U M M A R Y
+
+
+     SOLVER             CONOPT
+     SOLVER STATUS    1 NORMAL COMPLETION
+     MODEL STATUS     2 LOCALLY OPTIMAL
+     OBJECTIVE VALUE                0.0000
+     RESOURCE USAGE, LIMIT          0.03110000000000.000
+     ITERATION COUNT, LIMIT         7     2147483647
+     EVALUATION ERRORS, LIMIT       0              0
+
+
+     SOLVER             KNITRO
+     SOLVER STATUS    7 LICENSING PROBLEMS
+     MODEL STATUS     11 LIC PROBLEM - NO SOLUTION
+     OBJECTIVE VALUE                0.0000
+     RESOURCE USAGE, LIMIT          0.03110000000000.000
+     ITERATION COUNT, LIMIT         7     2147483647
+     EVALUATION ERRORS, LIMIT       0              0
+
+
+     SOLVER             SNOPT
+     SOLVER STATUS    1 NORMAL COMPLETION
+     MODEL STATUS     2 LOCALLY OPTIMAL
+     OBJECTIVE VALUE                0.0000
+     RESOURCE USAGE, LIMIT          0.06210000000000.000
+     ITERATION COUNT, LIMIT       329     2147483647
+     EVALUATION ERRORS, LIMIT       0              0
+
+
+     SOLVER             MINOS
+     SOLVER STATUS    1 NORMAL COMPLETION
+     MODEL STATUS     2 LOCALLY OPTIMAL
+     OBJECTIVE VALUE                0.0000
+     RESOURCE USAGE, LIMIT          0.10910000000000.000
+     ITERATION COUNT, LIMIT       709     2147483647
+     EVALUATION ERRORS, LIMIT       0              0
+
+No solution returned
+GAMS 32.2.0  rc62c018 Released Aug 26, 2020 WEX-WEI x86 64bit/MS Windows - 03/24/21 21:45:52 Page 7
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+E x e c u t i o n
+
+
+EXECUTION TIME       =        0.468 SECONDS      5 MB  32.2.0 rc62c018 WEX-WEI
+
+
+USER: Chuei-Tin Chang, Single User License           S200526/0001AP-WIN
+      National Cheng Kung University, Department of Chemical EngiDC3482
+      License for teaching and research at degree granting institutions
+
+
+**** FILE SUMMARY
+
+Input      C:\Users\user\Documents\bjonesmile_project\FId-pde-project\flow-obs\flowobs.gms
+Output     C:\Users\user\Documents\bjonesmile_project\FId-pde-project\flow-obs\_gams_py_gjo0.lst
